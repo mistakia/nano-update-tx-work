@@ -81,8 +81,14 @@ const broadcastBlock = async (block) => {
 
 const main = async () => {
   const block = await getBlock(argv.h)
-  const { previous } = block.contents
   logger(block)
+
+  if (block.confirmed === 'true') {
+    logger(`block ${argv.h} is already confirmed`)
+    process.exit()
+  }
+
+  const { previous } = block.contents
 
   const workRes = await generateWork({ hash: previous, difficulty: argv.d })
   logger(workRes)

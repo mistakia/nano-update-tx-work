@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "lint": "standard ."
+  },
+  "dependencies": {
+    "debug": "^4.3.1",
+    "node-fetch": "^2.6.1",
+    "yargs": "^16.2.0"
+  },
+  "devDependencies": {
+    "standard": "^16.0.3"
+  }
+}

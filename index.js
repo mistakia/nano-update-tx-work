@@ -150,7 +150,7 @@ const updateTxWork = async (hash) => {
   logger(validateWorkRes)
   const { multiplier } = validateWorkRes
   const updatedMultiplier = parseFloat(multiplier) + 2
-  if (updatedMultiplier > 1000) {
+  if (updatedMultiplier > 100) {
     logger(`block ${hash} multiplier ${multiplier}x is too high`)
     return
   }

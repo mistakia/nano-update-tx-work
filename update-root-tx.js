@@ -166,7 +166,7 @@ const updateTxWork = async (hash) => {
   })
   logger(validateWorkRes)
   const { multiplier } = validateWorkRes
-  const updatedMultiplier = parseFloat(multiplier) + 2
+  const updatedMultiplier = parseFloat(multiplier) + 1
   if (updatedMultiplier > config.maxMultiplier) {
     logger(`block ${hash} multiplier ${multiplier}x is too high`)
     return

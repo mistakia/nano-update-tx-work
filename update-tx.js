@@ -113,7 +113,7 @@ const main = async () => {
   })
   logger(validateWorkRes)
   const { multiplier } = validateWorkRes
-  const updatedMultiplier = parseFloat(multiplier) + 2
+  const updatedMultiplier = parseFloat(multiplier) + 1
   if (updatedMultiplier > config.maxMultiplier) {
     logger(`block ${argv.h} multiplier ${multiplier}x is too high`)
     return

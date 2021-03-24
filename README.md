@@ -18,7 +18,8 @@ To rebroadcast a specific block with a higher PoW
 node update-tx.js -h [block hash]
 ```
 
-To find the root unconfirmed tx and rebroadcast with a higher PoW. Note: it can be a tx on a different account if the root unconfirmed on the specified account is a receive that doesn't have the send confirmed.
+To find the root unconfirmed tx and rebroadcast with a higher PoW.
+> Note: it can be a tx on a different account if the root unconfirmed on the specified account is a receive that doesn't have the send confirmed.
 ```
 node update-root-tx.js -a [nano account address]
 ```

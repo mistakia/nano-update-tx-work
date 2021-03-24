@@ -8,17 +8,10 @@ const config = require('./config')
 const logger = debug('script')
 debug.enable('script')
 
-if (!argv.d) {
-  console.log('missing difficulty: -d')
+if (!argv.a) {
+  console.log('missing account: -a')
   process.exit()
 }
-
-if (!argv.h) {
-  console.log('missing block hash: -h')
-  process.exit()
-}
-
-logger(`Updating block ${argv.h} with ${argv.d}x work`)
 
 const request = async (options) => {
   const request = new Request(options.url, options)
@@ -61,12 +54,14 @@ const generateWork = async ({ hash, difficulty }) => {
 
 const getBlock = async (hash) => {
   const data = {
-    action: 'block_info',
+    action: 'blocks_info',
     json_block: true,
-    hash
+    source: true,
+    hashes: [hash]
   }
   const options = rpcRequest(data)
-  return request(options)
+  const res = await request(options)
+  return res.blocks[hash]
 }
 
 const broadcastBlock = async (block) => {
@@ -79,18 +74,83 @@ const broadcastBlock = async (block) => {
   return request(options)
 }
 
-const main = async () => {
-  const block = await getBlock(argv.h)
-  logger(block)
+const getAccountInfo = async (account) => {
+  const data = {
+    action: 'account_info',
+    account
+  }
+  const options = rpcRequest(data)
+  return request(options)
+}
 
-  if (block.confirmed === 'true') {
-    logger(`block ${argv.h} is already confirmed`)
-    process.exit()
+const getChain = async (block) => {
+  const data = {
+    action: 'chain',
+    count: 2,
+    reverse: true,
+    block
+  }
+  const options = rpcRequest(data)
+  return request(options)
+}
+
+const getValidateWork = async ({ hash, work }) => {
+  const data = {
+    action: 'work_validate',
+    work,
+    hash
   }
 
+  const options = rpcRequest(data)
+  return request(options)
+}
+
+const getUnconfirmedRootForAccount = async (account) => {
+  const accountInfo = await getAccountInfo(account)
+  // logger(accountInfo)
+
+  const chain = await getChain(accountInfo.confirmation_height_frontier)
+  // logger(chain)
+
+  const unconfirmedRoot = chain.blocks[1]
+  logger(`Unconfirmed root ${unconfirmedRoot} for account ${account}`)
+
+  return unconfirmedRoot
+}
+
+const isConfirmed = async (hash) => {
+  const block = await getBlock(hash)
+  return block.confirmed === 'true'
+}
+
+const getUnconfirmedRoot = async (account) => {
+  logger(`getting unconfirmed root for ${account}`)
+  const unconfirmedRootForAccount = await getUnconfirmedRootForAccount(account)
+
+  const block = await getBlock(unconfirmedRootForAccount)
+  logger(block)
+  if (block.subtype === 'receive') {
+    const confirmed = await isConfirmed(block.contents.link)
+    if (!confirmed) {
+      logger(`unconfirmed root ${unconfirmedRootForAccount} depends on an unconfirmed receive from ${block.source_account}`)
+      return getUnconfirmedRoot(block.source_account)
+    }
+  }
+
+  return unconfirmedRootForAccount
+}
+
+const updateTxWork = async (hash) => {
+  const block = await getBlock(hash)
   const { previous } = block.contents
 
-  const workRes = await generateWork({ hash: previous, difficulty: argv.d })
+  const validateWorkRes = await getValidateWork({ hash: previous, work: block.contents.work })
+  logger(validateWorkRes)
+  const { multiplier } = validateWorkRes
+  const updatedMultiplier = parseFloat(multiplier) + 10
+  logger(`Updating block ${hash} with ${updatedMultiplier}x work`)
+
+  const workRes = await generateWork({ hash: previous, difficulty: updatedMultiplier })
   logger(workRes)
   const { work } = workRes
 
@@ -98,6 +158,18 @@ const main = async () => {
 
   const broadcastRes = await broadcastBlock({ ...block.contents, work })
   logger(broadcastRes)
+}
+
+const main = async () => {
+  const accountInfo = await getAccountInfo(argv.a)
+
+  if (accountInfo.frontier === accountInfo.confirmation_height_frontier) {
+    logger(`Account frontier ${accountInfo.frontier} is confirmed`)
+    return
+  }
+
+  const unconfirmedRoot = await getUnconfirmedRoot(argv.a)
+  await updateTxWork(unconfirmedRoot)
 }
 
 try {

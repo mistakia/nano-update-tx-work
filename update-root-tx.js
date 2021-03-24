@@ -156,6 +156,7 @@ const getUnconfirmedRoot = async (account) => {
 
 const updateTxWork = async (hash) => {
   logger(`Updating block ${hash}`)
+
   const block = await getBlock(hash)
   logger(block)
   const { previous } = block.contents
@@ -165,12 +166,14 @@ const updateTxWork = async (hash) => {
     work: block.contents.work
   })
   logger(validateWorkRes)
+
   const { multiplier } = validateWorkRes
   const updatedMultiplier = parseFloat(multiplier) + 1
   if (updatedMultiplier > config.maxMultiplier) {
     logger(`block ${hash} multiplier ${multiplier}x is too high`)
     return
   }
+
   logger(`Updating block ${hash} with ${updatedMultiplier}x work`)
 
   const workRes = await generateWork({

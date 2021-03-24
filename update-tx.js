@@ -112,12 +112,14 @@ const main = async () => {
     work: block.contents.work
   })
   logger(validateWorkRes)
+
   const { multiplier } = validateWorkRes
   const updatedMultiplier = parseFloat(multiplier) + 1
   if (updatedMultiplier > config.maxMultiplier) {
     logger(`block ${argv.h} multiplier ${multiplier}x is too high`)
     return
   }
+
   logger(`Updating block ${argv.h} with ${updatedMultiplier}x work`)
 
   const workRes = await generateWork({

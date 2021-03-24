@@ -44,7 +44,7 @@ const workRequest = (data) => {
   return { url: config.workAddress, ...POST(data) }
 }
 
-const generateWork = async ({ hash, difficulty }) => {
+const getWorkGenerate = async ({ hash, difficulty }) => {
   const data = {
     action: 'work_generate',
     hash,
@@ -52,6 +52,18 @@ const generateWork = async ({ hash, difficulty }) => {
   }
   const options = workRequest(data)
   return request(options)
+}
+
+const generateWork = async ({ hash, difficulty }) => {
+  let result
+  do {
+    result = await getWorkGenerate({ hash, difficulty })
+  } while (
+    parseFloat(result.multiplier) / difficulty > 1.15 &&
+    parseFloat(result.multiplier) - difficulty > 5
+  )
+
+  return result
 }
 
 const getBlock = async (hash) => {
@@ -95,17 +107,23 @@ const main = async () => {
   }
 
   const { previous } = block.contents
-  const validateWorkRes = await getValidateWork({ hash: previous, work: block.contents.work })
+  const validateWorkRes = await getValidateWork({
+    hash: previous,
+    work: block.contents.work
+  })
   logger(validateWorkRes)
   const { multiplier } = validateWorkRes
   const updatedMultiplier = parseFloat(multiplier) + 2
-  if (updatedMultiplier > 100) {
+  if (updatedMultiplier > config.maxMultiplier) {
     logger(`block ${argv.h} multiplier ${multiplier}x is too high`)
     return
   }
   logger(`Updating block ${argv.h} with ${updatedMultiplier}x work`)
 
-  const workRes = await generateWork({ hash: previous, difficulty: updatedMultiplier })
+  const workRes = await generateWork({
+    hash: previous,
+    difficulty: updatedMultiplier
+  })
   logger(workRes)
   const { work } = workRes
 

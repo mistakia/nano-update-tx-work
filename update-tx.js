@@ -76,6 +76,15 @@ const getBlock = async (hash) => {
   return request(options)
 }
 
+const getAccountKey = async (account) => {
+  const data = {
+    action: 'account_key',
+    account
+  }
+  const options = rpcRequest(data)
+  return request(options)
+}
+
 const broadcastBlock = async (block) => {
   const data = {
     action: 'process',
@@ -97,6 +106,11 @@ const getValidateWork = async ({ hash, work }) => {
   return request(options)
 }
 
+const getPublicKey = async (account) => {
+  const accountRes = await getAccountKey(account)
+  return accountRes.key
+}
+
 const main = async () => {
   const block = await getBlock(argv.h)
   logger(block)
@@ -107,8 +121,10 @@ const main = async () => {
   }
 
   const { previous } = block.contents
+  const workHash =
+    block.height === '1' ? await getPublicKey(block.block_account) : previous
   const validateWorkRes = await getValidateWork({
-    hash: previous,
+    hash: workHash,
     work: block.contents.work
   })
   logger(validateWorkRes)
@@ -123,7 +139,7 @@ const main = async () => {
   logger(`Updating block ${argv.h} with ${updatedMultiplier}x work`)
 
   const workRes = await generateWork({
-    hash: previous,
+    hash: workHash,
     difficulty: updatedMultiplier
   })
   logger(workRes)

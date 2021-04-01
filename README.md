@@ -4,7 +4,7 @@
 
 ## Installation
 
-```
+```js
 yarn install // or npm install
 ```
 

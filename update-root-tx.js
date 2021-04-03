@@ -135,6 +135,10 @@ const getUnconfirmedRootForAccount = async (account) => {
   const accountInfo = await getAccountInfo(account)
   // logger(accountInfo)
 
+  if (accountInfo.confirmation_height === '0') {
+    return accountInfo.open_block
+  }
+
   const chain = await getChain(accountInfo.confirmation_height_frontier)
   // logger(chain)
 

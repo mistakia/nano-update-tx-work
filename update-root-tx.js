@@ -73,6 +73,11 @@ const getUnconfirmedRootForAccount = async (account, { originalAccount }) => {
   const hash = await getSuccessorBlock(accountInfo.confirmation_height_frontier)
   logger(`Unconfirmed root ${hash} for account ${account}`)
 
+  if (!hash) {
+    logger(`missing successor block for ${accountInfo.confirmation_height_frontier}`)
+    process.exit()
+  }
+
   return { hash, node }
 }
 

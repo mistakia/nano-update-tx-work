@@ -23,8 +23,8 @@ const POST = (data) => ({
   }
 })
 
-const rpcRequest = (data) => {
-  return { url: config.nodeAddress, ...POST(data) }
+const rpcRequest = (data, { url = config.nodeAddress } = {}) => {
+  return { url, ...POST(data) }
 }
 
 const workRequest = (data) => {
@@ -65,22 +65,22 @@ const getBlock = async (hash) => {
   return res.blocks[hash]
 }
 
-const broadcastBlock = async (block) => {
+const broadcastBlock = async (block, { url = config.nodeAddress } = {}) => {
   const data = {
     action: 'process',
     json_block: true,
     block
   }
-  const options = rpcRequest(data)
+  const options = rpcRequest(data, { url })
   return request(options)
 }
 
-const getAccountInfo = async (account) => {
+const getAccountInfo = async (account, { url = config.nodeAddress } = {}) => {
   const data = {
     action: 'account_info',
     account
   }
-  const options = rpcRequest(data)
+  const options = rpcRequest(data, { url })
   return request(options)
 }
 

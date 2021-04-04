@@ -22,21 +22,9 @@ if (!argv.a) {
   process.exit()
 }
 
-const getUnconfirmedRootForAccount = async (account) => {
-  const accountInfo = await getAccountInfo(account)
-  // logger(accountInfo)
-
-  if (accountInfo.confirmation_height === '0') {
-    return accountInfo.open_block
-  }
-
-  const chain = await getChain(accountInfo.confirmation_height_frontier)
-  // logger(chain)
-
-  const unconfirmedRoot = chain.blocks[1]
-  logger(`Unconfirmed root ${unconfirmedRoot} for account ${account}`)
-
-  return unconfirmedRoot
+const getSuccessorBlock = async (hash) => {
+  const chain = await getChain(hash)
+  return chain.blocks[1]
 }
 
 const isConfirmed = async (hash) => {
@@ -44,34 +32,86 @@ const isConfirmed = async (hash) => {
   return block.confirmed === 'true'
 }
 
-const getUnconfirmedRoot = async (account) => {
-  logger(`getting unconfirmed root for ${account}`)
-  const unconfirmedRootForAccount = await getUnconfirmedRootForAccount(account)
+const getAccountInfoWithLowestConfirmationHeight = async (account) => {
+  const requests = config.nodeAddresses.map((url) =>
+    getAccountInfo(account, { url })
+  )
+  const responses = await Promise.allSettled(requests)
+  const heights = responses.map((r) =>
+    r.value && r.value.confirmation_height
+      ? parseInt(r.value.confirmation_height, 10)
+      : Infinity
+  )
+  const index = heights.indexOf(Math.min(...heights))
+  return {
+    node: config.nodeAddresses[index],
+    accountInfo: responses[index].value
+  }
+}
 
-  const block = await getBlock(unconfirmedRootForAccount)
+const getUnconfirmedRootForAccount = async (account, { originalAccount }) => {
+  const {
+    accountInfo,
+    node
+  } = await getAccountInfoWithLowestConfirmationHeight(account)
+  logger(`node ${node} has the lowest confirmation height`)
+  logger(accountInfo)
+
+  // check if original account frontier is confirmed on the node with the lowest confirmation height
+  if (
+    originalAccount &&
+    accountInfo.frontier === accountInfo.confirmation_height_frontier
+  ) {
+    logger(`Account frontier ${accountInfo.frontier} is confirmed`)
+    process.exit()
+  }
+
+  if (accountInfo.confirmation_height === '0') {
+    return accountInfo.open_block
+  }
+
+  const hash = await getSuccessorBlock(accountInfo.confirmation_height_frontier)
+  logger(`Unconfirmed root ${hash} for account ${account}`)
+
+  return { hash, node }
+}
+
+const getUnconfirmedRoot = async (account, { originalAccount = true }) => {
+  logger(`getting unconfirmed root for ${account}`)
+  const { hash, node } = await getUnconfirmedRootForAccount(account, {
+    originalAccount
+  })
+
+  const block = await getBlock(hash)
   logger(block)
   if (block.subtype === 'receive') {
     const confirmed = await isConfirmed(block.contents.link)
     if (!confirmed) {
       logger(
-        `unconfirmed root ${unconfirmedRootForAccount} depends on an unconfirmed receive from ${block.source_account}`
+        `unconfirmed root ${hash} depends on an unconfirmed receive from ${block.source_account}`
       )
-      return getUnconfirmedRoot(block.source_account)
+      return getUnconfirmedRoot(block.source_account, {
+        originalAccount: false
+      })
     }
   }
 
-  return unconfirmedRootForAccount
+  return {
+    hash,
+    node
+  }
 }
 
-const updateTxWork = async (hash) => {
+const updateTxWork = async (hash, url) => {
   logger(`Updating block ${hash}`)
 
   const block = await getBlock(hash)
   logger(block)
 
-  const { previous } = block.contents
   const workHash =
-    block.height === '1' ? await getPublicKey(block.block_account) : previous
+    block.height === '1'
+      ? await getPublicKey(block.block_account)
+      : block.contents.previous
   const validateWorkRes = await getValidateWork({
     hash: workHash,
     work: block.contents.work
@@ -96,20 +136,18 @@ const updateTxWork = async (hash) => {
 
   logger(`Broadcasting with higher work: ${work}`)
 
-  const broadcastRes = await broadcastBlock({ ...block.contents, work })
+  const broadcastRes = await broadcastBlock(
+    { ...block.contents, work },
+    { url }
+  )
   logger(broadcastRes)
 }
 
 const main = async () => {
-  const accountInfo = await getAccountInfo(argv.a)
-
-  if (accountInfo.frontier === accountInfo.confirmation_height_frontier) {
-    logger(`Account frontier ${accountInfo.frontier} is confirmed`)
-    return
-  }
-
-  const unconfirmedRoot = await getUnconfirmedRoot(argv.a)
-  await updateTxWork(unconfirmedRoot)
+  const { hash, node } = await getUnconfirmedRoot(argv.a, {
+    originalAccount: true
+  })
+  await updateTxWork(hash, node)
 }
 
 try {

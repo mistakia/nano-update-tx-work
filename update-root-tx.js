@@ -42,7 +42,11 @@ const getAccountInfoWithLowestConfirmationHeight = async (account) => {
       ? parseInt(r.value.confirmation_height, 10)
       : Infinity
   )
-  const index = heights.indexOf(Math.min(...heights))
+  const max = Math.max(...heights.filter(h => h !== Infinity))
+  const min = Math.min(...heights)
+  logger(`Confirmed block height — High: ${max}, Low: ${min}, Delta: ${max - min}`)
+
+  const index = heights.indexOf(min)
   return {
     node: config.nodeAddresses[index],
     accountInfo: responses[index].value

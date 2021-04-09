@@ -71,7 +71,7 @@ const getUnconfirmedRootForAccount = async (account, { originalAccount }) => {
   }
 
   if (accountInfo.confirmation_height === '0') {
-    return accountInfo.open_block
+    return { hash: accountInfo.open_block, node }
   }
 
   const hash = await getSuccessorBlock(accountInfo.confirmation_height_frontier)

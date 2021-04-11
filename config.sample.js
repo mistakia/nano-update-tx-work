@@ -18,6 +18,6 @@ module.exports = {
     'https://api.nanex.cc',
     'https://vault.nanocrawler.cc/api/node-api',
     'https://node.somenano.com/proxy',
-    'https://gonano.dev/rpc'
+    // 'https://gonano.dev/rpc' // commented out because it's uselessly behind
   ]
 }

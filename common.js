@@ -69,6 +69,7 @@ const broadcastBlock = async (block, { url = config.nodeAddress } = {}) => {
   const data = {
     action: 'process',
     json_block: true,
+    watch_work: false,
     block
   }
   const options = rpcRequest(data, { url })
